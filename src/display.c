@@ -418,28 +418,28 @@ static uint32_t go2_rkformat_get(uint32_t drm_fourcc)
 {
     switch (drm_fourcc)
     {
-        case DRM_FORMAT_ABGR8888:
+        case DRM_FORMAT_RGBA8888:
             return RK_FORMAT_RGBA_8888;
     
-        case DRM_FORMAT_XBGR8888:
+        case DRM_FORMAT_RGBX8888:
             return RK_FORMAT_RGBX_8888;
     
-        case DRM_FORMAT_BGR888:
+        case DRM_FORMAT_RGB888:
             return RK_FORMAT_RGB_888;
     
-        case DRM_FORMAT_ARGB8888:
+        case DRM_FORMAT_BGRA8888:
             return RK_FORMAT_BGRA_8888;
     
         case DRM_FORMAT_RGB565:
             return RK_FORMAT_RGB_565;
 
-        case DRM_FORMAT_ABGR1555:
+        case DRM_FORMAT_RGBA5551:
             return RK_FORMAT_RGBA_5551;
     
-        case DRM_FORMAT_ABGR4444:
+        case DRM_FORMAT_RGBA4444:
             return RK_FORMAT_RGBA_4444;
 
-        case DRM_FORMAT_RGB888:
+        case DRM_FORMAT_BGR888:
             return RK_FORMAT_BGR_888;
     
         default:

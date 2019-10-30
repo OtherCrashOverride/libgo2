@@ -6,6 +6,7 @@
 typedef struct go2_display go2_display_t;
 typedef struct go2_surface go2_surface_t;
 typedef struct go2_frame_buffer go2_frame_buffer_t;
+typedef struct go2_presenter go2_presenter_t;
 
 typedef enum go2_rotation
 {
@@ -47,6 +48,11 @@ void go2_surface_blit(go2_surface_t* srcSurface, int srcX, int srcY, int srcWidt
 go2_frame_buffer_t* go2_frame_buffer_create(go2_surface_t* surface);
 void go2_frame_buffer_destroy(go2_frame_buffer_t* frame_buffer);
 go2_surface_t* go2_frame_buffer_surface_get(go2_frame_buffer_t* frame_buffer);
+
+
+go2_presenter_t* go2_presenter_create(go2_display_t* display, uint32_t format, uint32_t background_color);
+void go2_presenter_destroy(go2_presenter_t* presenter);
+void go2_presenter_post(go2_presenter_t* presenter, go2_surface_t* surface, int srcX, int srcY, int srcWidth, int srcHeight, int dstX, int dstY, int dstWidth, int dstHeight, go2_rotation_t rotation);
 
 #ifdef __cplusplus
 }
