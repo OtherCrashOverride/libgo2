@@ -32,6 +32,8 @@ int go2_drm_format_get_bpp(uint32_t format);
 
 go2_surface_t* go2_surface_create(go2_display_t* display, int width, int height, uint32_t format);
 void go2_surface_destroy(go2_surface_t* surface);
+int go2_surface_width_get(go2_surface_t* surface);
+int go2_surface_height_get(go2_surface_t* surface);
 uint32_t go2_surface_format_get(go2_surface_t* surface);
 int go2_surface_stride_get(go2_surface_t* surface);
 int go2_surface_prime_fd(go2_surface_t* surface);
@@ -44,6 +46,7 @@ void go2_surface_blit(go2_surface_t* srcSurface, int srcX, int srcY, int srcWidt
 
 go2_frame_buffer_t* go2_frame_buffer_create(go2_surface_t* surface);
 void go2_frame_buffer_destroy(go2_frame_buffer_t* frame_buffer);
+go2_surface_t* go2_frame_buffer_surface_get(go2_frame_buffer_t* frame_buffer);
 
 #ifdef __cplusplus
 }

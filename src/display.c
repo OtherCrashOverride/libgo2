@@ -1,5 +1,7 @@
 #include "display.h"
 
+#include "queue.h"
+
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include <drm/drm_fourcc.h>
@@ -15,6 +17,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <pthread.h>
+#include <semaphore.h>
 
 #include <rga/RgaApi.h>
 
@@ -50,6 +54,19 @@ typedef struct go2_frame_buffer
     uint32_t fb_id;
 } go2_frame_buffer_t;
 
+typedef struct go2_presenter
+{
+    go2_display_t* display;
+    uint32_t format;
+    uint32_t background_color;
+    go2_queue_t* freeFrameBuffers;
+    go2_queue_t* usedFrameBuffers;
+    pthread_mutex_t queueMutex;
+    pthread_t renderThread;
+    sem_t freeSem;
+    sem_t usedSem;
+    volatile bool terminating;
+} go2_presenter_t;
 
 
 go2_display_t* go2_display_create()
@@ -328,6 +345,16 @@ void go2_surface_destroy(go2_surface_t* surface)
     free(surface);
 }
 
+int go2_surface_width_get(go2_surface_t* surface)
+{
+    return surface->width;
+}
+
+int go2_surface_height_get(go2_surface_t* surface)
+{
+    return surface->height;
+}
+
 uint32_t go2_surface_format_get(go2_surface_t* surface)
 {
     return surface->format;
@@ -538,3 +565,170 @@ void go2_frame_buffer_destroy(go2_frame_buffer_t* frame_buffer)
 
     free(frame_buffer);
 }
+
+go2_surface_t* go2_frame_buffer_surface_get(go2_frame_buffer_t* frame_buffer)
+{
+    return frame_buffer->surface;
+}
+
+
+
+
+
+#if 0
+typedef struct go2_presenter
+{
+    go2_display_t* display;
+    uint32_t format;
+    uint32_t background_color;
+    go2_queue_t* freeFrameBuffers;
+    go2_queue_t* usedFrameBuffers;
+    pthread_mutex_t queueMutex;
+    pthread_t renderThread;
+    sem_t freeSem;
+    sem_t usedSem;
+    volatile bool terminating;
+} go2_presenter_t;
+#endif
+
+#define BUFFER_COUNT (3)
+
+static void* go2_presenter_renderloop(void* arg)
+{
+    go2_presenter_t* presenter = (go2_presenter_t*)arg;
+    go2_frame_buffer_t* prevFrameBuffer = NULL;
+
+    presenter->terminating = false;
+    while(!presenter->terminating)
+    {
+        sem_wait(&presenter->usedSem);
+        if(presenter->terminating) break;
+
+
+        pthread_mutex_lock(&presenter->queueMutex);
+
+        if (go2_queue_count_get(presenter->usedFrameBuffers) < 1)
+        {
+            printf("no framebuffer available.\n");
+            abort();
+        }
+
+        go2_frame_buffer_t* dstFrameBuffer = (go2_frame_buffer_t*)go2_queue_pop(presenter->usedFrameBuffers);
+
+        pthread_mutex_unlock(&presenter->queueMutex);
+
+
+        go2_display_present(presenter->display, dstFrameBuffer);
+
+        if (prevFrameBuffer)
+        {
+            pthread_mutex_lock(&presenter->queueMutex);
+            go2_queue_push(presenter->freeFrameBuffers, prevFrameBuffer);
+            pthread_mutex_unlock(&presenter->queueMutex);
+
+            sem_post(&presenter->freeSem);
+        }
+
+        prevFrameBuffer = dstFrameBuffer;            
+    }
+
+
+    return NULL;
+}
+
+go2_presenter_t* go2_presenter_create(go2_display_t* display, uint32_t format, uint32_t background_color)
+{
+    go2_presenter_t* result = malloc(sizeof(*result));
+    if (!result)
+    {
+        printf("malloc failed.\n");
+        return NULL;
+    }
+
+    memset(result, 0, sizeof(*result));
+
+
+    result->display = display;
+    result->format = format;
+    result->background_color = background_color;
+    result->freeFrameBuffers = go2_queue_create(BUFFER_COUNT);
+    result->usedFrameBuffers = go2_queue_create(BUFFER_COUNT);
+
+    int width = go2_display_width_get(display);
+    int height = go2_display_height_get(display);
+
+    for (int i = 0; i < BUFFER_COUNT; ++i)
+    {
+        go2_surface_t* surface = go2_surface_create(display, width, height, format);
+        go2_frame_buffer_t* frameBuffer = go2_frame_buffer_create(surface);
+
+        go2_queue_push(result->freeFrameBuffers, frameBuffer);
+    }
+
+ 
+    sem_init(&result->usedSem, 0, 0);
+    sem_init(&result->freeSem, 0, BUFFER_COUNT);
+
+    pthread_mutex_init(&result->queueMutex, NULL);
+
+    pthread_create(&result->renderThread, NULL, go2_presenter_renderloop, result);
+
+    return result;
+}
+
+void go2_presenter_destroy(go2_presenter_t* presenter)
+{
+    // TODO
+    abort();
+}
+
+void go2_presenter_post(go2_presenter_t* presenter, go2_surface_t* surface, int srcX, int srcY, int srcWidth, int srcHeight, int dstX, int dstY, int dstWidth, int dstHeight, go2_rotation_t rotation)
+{
+    sem_wait(&presenter->freeSem);
+
+
+    pthread_mutex_lock(&presenter->queueMutex);
+
+    if (go2_queue_count_get(presenter->freeFrameBuffers) < 1)
+    {
+        printf("no framebuffer available.\n");
+        abort();
+    }
+
+    go2_frame_buffer_t* dstFrameBuffer = go2_queue_pop(presenter->freeFrameBuffers);
+
+    pthread_mutex_unlock(&presenter->queueMutex);
+
+
+    go2_surface_t* dstSurface = go2_frame_buffer_surface_get(dstFrameBuffer);
+
+    rga_info_t dst = { 0 };
+    dst.fd = go2_surface_prime_fd(dstSurface);
+    dst.mmuFlag = 1;
+    dst.rect.xoffset = 0;
+    dst.rect.yoffset = 0;
+    dst.rect.width = go2_surface_width_get(dstSurface);
+    dst.rect.height = go2_surface_height_get(dstSurface);
+    dst.rect.wstride = go2_surface_stride_get(dstSurface) / (go2_drm_format_get_bpp(go2_surface_format_get(dstSurface)) / 8);
+    dst.rect.hstride = go2_surface_height_get(dstSurface);
+    dst.rect.format = go2_rkformat_get(go2_surface_format_get(dstSurface));
+    dst.color = presenter->background_color;
+
+    int ret = c_RkRgaColorFill(&dst);
+    if (ret)
+    {
+        printf("c_RkRgaColorFill failed.\n");
+    }
+
+
+    go2_surface_blit(surface, srcX, srcY, srcWidth, srcHeight, dstSurface, dstX, dstY, dstWidth, dstHeight, rotation);
+
+
+    pthread_mutex_lock(&presenter->queueMutex);
+    go2_queue_push(presenter->usedFrameBuffers, dstFrameBuffer);
+    pthread_mutex_unlock(&presenter->queueMutex);
+
+    sem_post(&presenter->usedSem);
+}
+
+
