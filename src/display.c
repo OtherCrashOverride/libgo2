@@ -64,7 +64,7 @@ go2_display_t* go2_display_create()
         goto out;
     }
 
-    memset(&result, 0, sizeof(*result));
+    memset(result, 0, sizeof(*result));
 
 
     // Open device
@@ -182,6 +182,16 @@ void go2_display_destroy(go2_display_t* display)
     free(display);
 }
 
+int go2_display_width_get(go2_display_t* display)
+{
+    return display->width;
+}
+
+int go2_display_height_get(go2_display_t* display)
+{
+    return display->height;
+}
+
 void go2_display_present(go2_display_t* display, go2_frame_buffer_t* frame_buffer)
 {
     int ret = drmModeSetCrtc(display->fd, display->crtc_id, frame_buffer->fb_id, 0, 0, &display->connector_id, 1, display->mode);
@@ -270,7 +280,7 @@ go2_surface_t* go2_surface_create(go2_display_t* display, int width, int height,
         goto out;
     }
 
-    memset(&result, 0, sizeof(*result));
+    memset(result, 0, sizeof(*result));
 
 
     struct drm_mode_create_dumb args = {0};
@@ -314,6 +324,16 @@ void go2_surface_destroy(go2_surface_t* surface)
     }
 
     free(surface);
+}
+
+uint32_t go2_surface_format_get(go2_surface_t* surface)
+{
+    return surface->format;
+}
+
+int go2_surface_stride_get(go2_surface_t* surface)
+{
+    return surface->stride;
 }
 
 int go2_surface_prime_fd(go2_surface_t* surface)
@@ -478,7 +498,7 @@ go2_frame_buffer_t* go2_frame_buffer_create(go2_surface_t* surface)
         return NULL;
     }
 
-    memset(&result, 0, sizeof(*result));
+    memset(result, 0, sizeof(*result));
 
 
     result->surface = surface;
