@@ -24,7 +24,7 @@ typedef struct go2_display
 {
     int fd;
     uint32_t connector_id;
-    drmModeModeInfo* mode;
+    drmModeModeInfo mode;
     uint32_t width;
     uint32_t height;
     uint32_t crtc_id;
@@ -107,26 +107,28 @@ go2_display_t* go2_display_create()
 
 
     // Find prefered mode
+    drmModeModeInfo* mode;
     for (i = 0; i < connector->count_modes; i++)
     {
         drmModeModeInfo *current_mode = &connector->modes[i];
         if (current_mode->type & DRM_MODE_TYPE_PREFERRED)
         {
-            result->mode = current_mode;
+            mode = current_mode;
             break;
         }
 
-        result->mode = NULL;
+        mode = NULL;
     }
 
-    if (!result->mode) 
+    if (!mode) 
     {
         printf("DRM_MODE_TYPE_PREFERRED not found.\n");
         goto err_03;
     }
 
-    result->width = result->mode->hdisplay;
-    result->height = result->mode->vdisplay;
+    result->mode = *mode;
+    result->width = mode->hdisplay;
+    result->height = mode->vdisplay;
 
 
     // Find encoder
@@ -194,7 +196,7 @@ int go2_display_height_get(go2_display_t* display)
 
 void go2_display_present(go2_display_t* display, go2_frame_buffer_t* frame_buffer)
 {
-    int ret = drmModeSetCrtc(display->fd, display->crtc_id, frame_buffer->fb_id, 0, 0, &display->connector_id, 1, display->mode);
+    int ret = drmModeSetCrtc(display->fd, display->crtc_id, frame_buffer->fb_id, 0, 0, &display->connector_id, 1, &display->mode);
     if (ret)
     {
         printf("drmModeSetCrtc failed.\n");        
@@ -338,7 +340,7 @@ int go2_surface_stride_get(go2_surface_t* surface)
 
 int go2_surface_prime_fd(go2_surface_t* surface)
 {
-    if (surface->prime_fd < 0)
+    if (surface->prime_fd <= 0)
     {
         int io = drmPrimeHandleToFD(surface->display->fd, surface->gem_handle, DRM_RDWR | DRM_CLOEXEC, &surface->prime_fd);
         if (io < 0)
@@ -401,7 +403,7 @@ static uint32_t go2_rkformat_get(uint32_t drm_fourcc)
         case DRM_FORMAT_ARGB8888:
             return RK_FORMAT_BGRA_8888;
     
-        case DRM_FORMAT_BGR565:
+        case DRM_FORMAT_RGB565:
             return RK_FORMAT_RGB_565;
 
         case DRM_FORMAT_ABGR1555:
