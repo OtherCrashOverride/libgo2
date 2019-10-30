@@ -7,6 +7,13 @@ typedef struct go2_display go2_display_t;
 typedef struct go2_surface go2_surface_t;
 typedef struct go2_frame_buffer go2_frame_buffer_t;
 
+typedef enum go2_rotation
+{
+    GO2_ROTATION_DEGREES_0 = 0,
+    GO2_ROTATION_DEGREES_90,
+    GO2_ROTATION_DEGREES_180,
+    GO2_ROTATION_DEGREES_270
+} go2_rotation_t;
 
 
 go2_display_t* go2_display_create();

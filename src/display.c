@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include <rga/RgaApi.h>
+
 
 
 typedef struct go2_display
@@ -359,6 +361,110 @@ void go2_surface_unmap(go2_surface_t* surface)
 
         surface->is_mapped = false;
         surface->map = NULL;
+    }
+}
+
+
+static uint32_t go2_rkformat_get(uint32_t drm_fourcc)
+{
+    switch (drm_fourcc)
+    {
+        case DRM_FORMAT_ABGR8888:
+            return RK_FORMAT_RGBA_8888;
+    
+        case DRM_FORMAT_XBGR8888:
+            return RK_FORMAT_RGBX_8888;
+    
+        case DRM_FORMAT_BGR888:
+            return RK_FORMAT_RGB_888;
+    
+        case DRM_FORMAT_ARGB8888:
+            return RK_FORMAT_BGRA_8888;
+    
+        case DRM_FORMAT_BGR565:
+            return RK_FORMAT_RGB_565;
+
+        case DRM_FORMAT_ABGR1555:
+            return RK_FORMAT_RGBA_5551;
+    
+        case DRM_FORMAT_ABGR4444:
+            return RK_FORMAT_RGBA_4444;
+
+        case DRM_FORMAT_RGB888:
+            return RK_FORMAT_BGR_888;
+    
+        default:
+            printf("RKFORMAT not supported.\n");
+            return 0;
+    }
+}
+
+void go2_surface_blit(go2_surface_t* srcSurface, int srcX, int srcY, int srcWidth, int srcHeight,
+                      go2_surface_t* dstSurface, int dstX, int dstY, int dstWidth, int dstHeight,
+                      go2_rotation_t rotation)
+{
+    rga_info_t dst = { 0 };
+    dst.fd = go2_surface_prime_fd(dstSurface);
+    dst.mmuFlag = 1;
+    dst.rect.xoffset = dstX;
+    dst.rect.yoffset = dstY;
+    dst.rect.width = dstWidth;
+    dst.rect.height = dstHeight;
+    dst.rect.wstride = dstSurface->stride / (go2_drm_format_get_bpp(dstSurface->format) / 8);
+    dst.rect.hstride = dstSurface->height;
+    dst.rect.format = go2_rkformat_get(dstSurface->format);
+
+    rga_info_t src = { 0 };
+    src.fd = go2_surface_prime_fd(srcSurface);
+    src.mmuFlag = 1;
+
+    switch (rotation)
+    {
+        case GO2_ROTATION_DEGREES_0:
+            src.rotation = 0;
+            break;
+
+        case GO2_ROTATION_DEGREES_90:
+            src.rotation = HAL_TRANSFORM_ROT_90;
+            break;
+
+        case GO2_ROTATION_DEGREES_180:
+            src.rotation = HAL_TRANSFORM_ROT_180;
+            break;
+
+        case GO2_ROTATION_DEGREES_270:
+            src.rotation = HAL_TRANSFORM_ROT_270;
+            break;
+
+        default:
+            printf("rotation not supported.\n");
+            return;
+    }
+
+    src.rect.xoffset = srcX;
+    src.rect.yoffset = srcY;
+    src.rect.width = srcWidth;
+    src.rect.height = srcHeight;
+    src.rect.wstride = srcSurface->stride / (go2_drm_format_get_bpp(srcSurface->format) / 8);
+    src.rect.hstride = srcSurface->height;
+    src.rect.format = go2_rkformat_get(srcSurface->format);
+
+#if 0
+    enum
+    {
+        CATROM    = 0x0,
+        MITCHELL  = 0x1,
+        HERMITE   = 0x2,
+        B_SPLINE  = 0x3,
+    };  /*bicubic coefficient*/
+#endif
+    src.scale_mode = 2;
+
+
+    int ret = c_RkRgaBlit(&src, &dst, NULL);
+    if (ret)
+    {
+        printf("c_RkRgaBlit failed.\n");        
     }
 }
 
