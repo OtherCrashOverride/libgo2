@@ -433,7 +433,7 @@ static uint32_t go2_rkformat_get(uint32_t drm_fourcc)
         case DRM_FORMAT_RGB888:
             return RK_FORMAT_RGB_888;
     
-        case DRM_FORMAT_BGRA8888:
+        case DRM_FORMAT_ARGB8888:
             return RK_FORMAT_BGRA_8888;
     
         case DRM_FORMAT_RGB565:
@@ -449,7 +449,8 @@ static uint32_t go2_rkformat_get(uint32_t drm_fourcc)
             return RK_FORMAT_BGR_888;
     
         default:
-            printf("RKFORMAT not supported.\n");
+            printf("RKFORMAT not supported. ");
+            printf("drm_fourcc=%c%c%c%c\n", drm_fourcc & 0xff, drm_fourcc >> 8 & 0xff, drm_fourcc >> 16 & 0xff, drm_fourcc >> 24);
             return 0;
     }
 }
@@ -991,7 +992,7 @@ void go2_context_make_current(go2_context_t* context)
 void go2_context_swap_buffers(go2_context_t* context)
 {
     EGLBoolean ret = eglSwapBuffers(context->eglDisplay, context->eglSurface);
-    if (ret != EGL_SUCCESS)
+    if (ret == EGL_FALSE)
     {
         printf("eglSwapBuffers failed\n");
         //abort();
