@@ -22,6 +22,12 @@
 
 #include <rga/RgaApi.h>
 
+#define EGL_EGLEXT_PROTOTYPES
+//#define GL_GLEXT_PROTOTYPES
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+// #include <GLES2/gl2.h>
+// #include <GLES2/gl2ext.h>
 
 
 typedef struct go2_display
@@ -732,3 +738,340 @@ void go2_presenter_post(go2_presenter_t* presenter, go2_surface_t* surface, int 
 }
 
 
+
+#define BUFFER_MAX (3)
+
+typedef struct buffer_surface_pair
+{
+    struct gbm_bo* gbmBuffer;
+    go2_surface_t* surface;
+} buffer_surface_pair_t;
+
+typedef struct go2_context
+{
+    go2_display_t* display;    
+    int width;
+    int height;
+    go2_context_attributes_t attributes;
+    struct gbm_device* gbmDevice;
+    EGLDisplay eglDisplay;
+    struct gbm_surface* gbmSurface;
+    EGLSurface eglSurface;
+    EGLContext eglContext;
+    uint32_t drmFourCC;
+    buffer_surface_pair_t bufferMap[BUFFER_MAX];
+    int bufferCount;
+} go2_context_t;
+
+
+
+static EGLConfig FindConfig(EGLDisplay eglDisplay, int redBits, int greenBits, int blueBits, int alphaBits, int depthBits, int stencilBits)
+{
+    EGLint configAttributes[] =
+    {
+        EGL_RED_SIZE,            redBits,
+        EGL_GREEN_SIZE,          greenBits,
+        EGL_BLUE_SIZE,           blueBits,
+        EGL_ALPHA_SIZE,          alphaBits,
+
+        EGL_DEPTH_SIZE,          depthBits,
+        EGL_STENCIL_SIZE,        stencilBits,
+
+        EGL_SURFACE_TYPE,        EGL_WINDOW_BIT,
+
+        EGL_NONE
+    };
+
+
+    int num_configs;
+    EGLBoolean success = eglChooseConfig(eglDisplay, configAttributes, NULL, 0, &num_configs);
+    if (success != EGL_TRUE)
+    {
+        printf("eglChooseConfig failed.\n");
+        abort();
+    }
+
+
+    //EGLConfig* configs = new EGLConfig[num_configs];
+    EGLConfig configs[num_configs];
+    success = eglChooseConfig(eglDisplay, configAttributes, configs, num_configs, &num_configs);
+    if (success != EGL_TRUE)
+    {
+        printf("eglChooseConfig failed.\n");
+        abort();
+    }
+
+
+    EGLConfig match = 0;
+    for (int i = 0; i < num_configs; ++i)
+    {
+        EGLint configRedSize;
+        EGLint configGreenSize;
+        EGLint configBlueSize;
+        EGLint configAlphaSize;
+        EGLint configDepthSize;
+        EGLint configStencilSize;
+
+        eglGetConfigAttrib(eglDisplay, configs[i], EGL_RED_SIZE, &configRedSize);
+        eglGetConfigAttrib(eglDisplay, configs[i], EGL_GREEN_SIZE, &configGreenSize);
+        eglGetConfigAttrib(eglDisplay, configs[i], EGL_BLUE_SIZE, &configBlueSize);
+        eglGetConfigAttrib(eglDisplay, configs[i], EGL_ALPHA_SIZE, &configAlphaSize);
+        eglGetConfigAttrib(eglDisplay, configs[i], EGL_DEPTH_SIZE, &configDepthSize);
+        eglGetConfigAttrib(eglDisplay, configs[i], EGL_STENCIL_SIZE, &configStencilSize);
+
+        //printf("Egl::FindConfig: index=%d, red=%d, green=%d, blue=%d, alpha=%d\n",
+        //	i, configRedSize, configGreenSize, configBlueSize, configAlphaSize);
+
+        if (configRedSize == redBits &&
+            configBlueSize == blueBits &&
+            configGreenSize == greenBits &&
+            configAlphaSize == alphaBits &&
+            configDepthSize == depthBits &&
+            configStencilSize == stencilBits)
+        {
+            match = configs[i];
+            break;
+        }
+    }
+
+    return match;
+}
+
+go2_context_t* go2_context_create(go2_display_t* display, int width, int height, const go2_context_attributes_t* attributes)
+{
+    EGLBoolean success;
+
+
+    go2_context_t* result = malloc(sizeof(*result));
+    if (!result)
+    {
+        printf("malloc failed.\n");
+        return NULL;
+    }
+
+    memset(result, 0, sizeof(*result));
+
+
+    result->display = display;
+    result->width = width;
+    result->height = height;
+    result->attributes = *attributes;
+
+
+    result->gbmDevice = gbm_create_device(display->fd);
+    if (!result->gbmDevice)
+    {
+        printf("gbm_create_device failed.\n");
+        goto err_00;
+    }
+
+
+    PFNEGLGETPLATFORMDISPLAYEXTPROC get_platform_display = NULL;
+    get_platform_display = (PFNEGLGETPLATFORMDISPLAYEXTPROC) eglGetProcAddress("eglGetPlatformDisplayEXT");
+    if(get_platform_display == NULL)
+    {
+        printf("eglGetProcAddress failed.\n");
+        goto err_01;
+    }
+
+    result->eglDisplay = get_platform_display(EGL_PLATFORM_GBM_KHR, result->gbmDevice, NULL);
+    if (result->eglDisplay == EGL_NO_DISPLAY)
+    {
+        printf("eglGetPlatformDisplayEXT failed.\n");
+        goto err_01;
+    }
+
+
+    // Initialize EGL
+    EGLint major;
+    EGLint minor;
+    success = eglInitialize(result->eglDisplay, &major, &minor);
+    if (success != EGL_TRUE)
+    {
+        printf("eglInitialize failed.\n");
+        goto err_01;
+    }
+
+    printf("EGL: major=%d, minor=%d\n", major, minor);
+    printf("EGL: Vendor=%s\n", eglQueryString(result->eglDisplay, EGL_VENDOR));
+    printf("EGL: Version=%s\n", eglQueryString(result->eglDisplay, EGL_VERSION));
+    printf("EGL: ClientAPIs=%s\n", eglQueryString(result->eglDisplay, EGL_CLIENT_APIS));
+    printf("EGL: Extensions=%s\n", eglQueryString(result->eglDisplay, EGL_EXTENSIONS));
+    printf("EGL: ClientExtensions=%s\n", eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS));
+    printf("\n");
+
+
+    EGLConfig eglConfig = FindConfig(result->eglDisplay, attributes->red_bits, attributes->green_bits,
+        attributes->blue_bits, attributes->alpha_bits, attributes->depth_bits, attributes->stencil_bits);
+
+
+    // Get the native visual id associated with the config
+    //int visual_id;
+    eglGetConfigAttrib(result->eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, (EGLint*)&result->drmFourCC);
+
+    result->gbmSurface = gbm_surface_create(result->gbmDevice,
+        width,
+        height,
+        result->drmFourCC,
+        GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+    if (!result->gbmSurface)
+    {
+        printf("gbm_surface_create failed.\n");
+        abort();
+    }
+
+
+    result->eglSurface = eglCreateWindowSurface(result->eglDisplay, eglConfig, (EGLNativeWindowType)result->gbmSurface, NULL);	
+    if (result->eglSurface == EGL_NO_SURFACE)
+    {
+        printf("eglCreateWindowSurface failed\n");
+        abort();
+    }
+
+
+    // Create a context
+    eglBindAPI(EGL_OPENGL_ES_API);
+
+    EGLint contextAttributes[] = {
+        EGL_CONTEXT_CLIENT_VERSION, attributes->major,
+        EGL_NONE };
+
+    result->eglContext = eglCreateContext(result->eglDisplay, eglConfig, EGL_NO_CONTEXT, contextAttributes);
+    if (result->eglContext == EGL_NO_CONTEXT)
+    {
+        printf("eglCreateContext failed\n");
+        abort();
+    }
+
+    success = eglMakeCurrent(result->eglDisplay, result->eglSurface, result->eglSurface, result->eglContext);
+    if (success != EGL_TRUE)
+    {
+        printf("eglMakeCurrent failed\n");
+        abort();
+    }
+
+
+    return result;
+
+
+err_01:
+    gbm_device_destroy(result->gbmDevice);
+
+err_00:
+    free(result);
+    return NULL;
+}
+
+void go2_context_destroy(go2_context_t* context)
+{
+    eglDestroyContext(context->eglDisplay, context->eglContext);
+    eglDestroySurface(context->eglDisplay, context->eglSurface);
+    gbm_surface_destroy(context->gbmSurface);
+    eglTerminate(context->eglDisplay);
+    gbm_device_destroy(context->gbmDevice);
+
+    for(int i = 0; i < context->bufferCount; ++i)
+    {
+        free(context->bufferMap[i].surface);
+    }
+
+    free(context);
+}
+
+void go2_context_make_current(go2_context_t* context)
+{
+    EGLBoolean success = eglMakeCurrent(context->eglDisplay, context->eglSurface, context->eglSurface, context->eglContext);
+    if (success != EGL_TRUE)
+    {
+        printf("eglMakeCurrent failed\n");
+        abort();
+    }
+}
+
+void go2_context_swap_buffers(go2_context_t* context)
+{
+    EGLBoolean ret = eglSwapBuffers(context->eglDisplay, context->eglSurface);
+    if (ret != EGL_SUCCESS)
+    {
+        printf("eglSwapBuffers failed\n");
+        //abort();
+    }
+}
+
+go2_surface_t* go2_context_surface_lock(go2_context_t* context)
+{
+    struct gbm_bo *bo = gbm_surface_lock_front_buffer(context->gbmSurface);
+    if (!bo)
+    {
+        printf("gbm_surface_lock_front_buffer failed.\n");
+        abort();
+    }
+
+    go2_surface_t* surface = NULL;
+    for (int i = 0; i < context->bufferCount; ++i)
+    {
+        buffer_surface_pair_t* pair = &context->bufferMap[i];
+        if (pair->gbmBuffer == bo)
+        {
+            surface = pair->surface;
+            break;
+        }
+    }
+
+    if (!surface)
+    {
+        if (context->bufferCount >= BUFFER_MAX)
+        {
+            printf("swap buffers count exceeded.\n");
+            abort();
+        }
+
+        surface = malloc(sizeof(*surface));
+        if (!surface)
+        {
+            printf("malloc failed.\n");
+            abort();
+        }
+
+        memset(surface, 0, sizeof(*surface));
+
+
+        surface->display = context->display;
+        surface->gem_handle = gbm_bo_get_handle(bo).u32;
+        surface->size = gbm_bo_get_stride(bo);
+        surface->width = gbm_bo_get_width(bo);
+        surface->height = gbm_bo_get_height(bo);
+        surface->stride = gbm_bo_get_stride(bo);
+        surface->format = context->drmFourCC;
+
+
+        buffer_surface_pair_t* pair = &context->bufferMap[context->bufferCount++];
+        pair->gbmBuffer = bo;
+        pair->surface = surface;
+
+        //printf("added buffer - bo=%p, count=%d\n", bo, context->bufferCount);
+    }
+
+    return surface;
+}
+
+void go2_context_surface_unlock(go2_context_t* context, go2_surface_t* surface)
+{
+    struct gbm_bo* bo = NULL;
+    for (int i = 0; i < context->bufferCount; ++i)
+    {
+        buffer_surface_pair_t* pair = &context->bufferMap[i];
+        if (pair->surface == surface)
+        {
+            bo = pair->gbmBuffer;
+            break;
+        }
+    }
+
+    if (!bo)
+    {
+        abort();
+    }
+
+    gbm_surface_release_buffer(context->gbmSurface, bo);
+}

@@ -16,6 +16,20 @@ typedef enum go2_rotation
     GO2_ROTATION_DEGREES_270
 } go2_rotation_t;
 
+typedef struct go2_context_attributes
+{
+    int major;
+    int minor;
+    int red_bits;
+    int green_bits;
+    int blue_bits;
+    int alpha_bits;
+    int depth_bits;
+    int stencil_bits;
+} go2_context_attributes_t;
+
+typedef struct go2_context go2_context_t;
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,6 +67,14 @@ go2_surface_t* go2_frame_buffer_surface_get(go2_frame_buffer_t* frame_buffer);
 go2_presenter_t* go2_presenter_create(go2_display_t* display, uint32_t format, uint32_t background_color);
 void go2_presenter_destroy(go2_presenter_t* presenter);
 void go2_presenter_post(go2_presenter_t* presenter, go2_surface_t* surface, int srcX, int srcY, int srcWidth, int srcHeight, int dstX, int dstY, int dstWidth, int dstHeight, go2_rotation_t rotation);
+
+
+go2_context_t* go2_context_create(go2_display_t* display, int width, int height, const go2_context_attributes_t* attributes);
+void go2_context_destroy(go2_context_t* context);
+void go2_context_make_current(go2_context_t* context);
+void go2_context_swap_buffers(go2_context_t* context);
+go2_surface_t* go2_context_surface_lock(go2_context_t* context);
+void go2_context_surface_unlock(go2_context_t* context, go2_surface_t* surface);
 
 #ifdef __cplusplus
 }
