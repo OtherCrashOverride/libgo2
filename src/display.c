@@ -685,8 +685,33 @@ go2_presenter_t* go2_presenter_create(go2_display_t* display, uint32_t format, u
 
 void go2_presenter_destroy(go2_presenter_t* presenter)
 {
-    // TODO
-    abort();
+    presenter->terminating = true;
+    sem_post(&presenter->usedSem);
+
+    pthread_join(presenter->renderThread, NULL);
+    pthread_mutex_destroy(&presenter->queueMutex);
+
+    sem_destroy(&presenter->freeSem);
+    sem_destroy(&presenter->usedSem);
+
+  
+    while(go2_queue_count_get(presenter->usedFrameBuffers) > 0)
+    {
+        go2_frame_buffer_t* frameBuffer = go2_queue_pop(presenter->usedFrameBuffers);
+        
+        go2_surface_destroy(frameBuffer->surface);
+        go2_frame_buffer_destroy(frameBuffer);
+    }
+
+    while(go2_queue_count_get(presenter->freeFrameBuffers) > 0)
+    {
+        go2_frame_buffer_t* frameBuffer = go2_queue_pop(presenter->freeFrameBuffers);
+        
+        go2_surface_destroy(frameBuffer->surface);
+        go2_frame_buffer_destroy(frameBuffer);
+    }
+
+    free(presenter);
 }
 
 void go2_presenter_post(go2_presenter_t* presenter, go2_surface_t* surface, int srcX, int srcY, int srcWidth, int srcHeight, int dstX, int dstY, int dstWidth, int dstHeight, go2_rotation_t rotation)
