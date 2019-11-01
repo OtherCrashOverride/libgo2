@@ -434,6 +434,7 @@ static uint32_t go2_rkformat_get(uint32_t drm_fourcc)
             return RK_FORMAT_RGB_888;
     
         case DRM_FORMAT_ARGB8888:
+        case DRM_FORMAT_XRGB8888:
             return RK_FORMAT_BGRA_8888;
     
         case DRM_FORMAT_RGB565:
