@@ -100,7 +100,7 @@ void go2_audio_destroy(go2_audio_t* audio)
 
 void go2_audio_submit(go2_audio_t* audio, const short* data, int frames)
 {
-    if (!audio->isAudioInitialized) return;
+    if (!audio || !audio->isAudioInitialized) return;
 
 
     if (!alcMakeContextCurrent(audio->context))
