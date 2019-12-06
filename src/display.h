@@ -57,7 +57,8 @@ void go2_surface_unmap(go2_surface_t* surface);
 void go2_surface_blit(go2_surface_t* srcSurface, int srcX, int srcY, int srcWidth, int srcHeight,
                       go2_surface_t* dstSurface, int dstX, int dstY, int dstWidth, int dstHeight,
                       go2_rotation_t rotation);
-                      
+int go2_surface_save_as_png(go2_surface_t* surface, const char* filename);
+     
 
 go2_frame_buffer_t* go2_frame_buffer_create(go2_surface_t* surface);
 void go2_frame_buffer_destroy(go2_frame_buffer_t* frame_buffer);

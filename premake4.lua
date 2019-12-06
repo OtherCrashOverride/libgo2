@@ -10,7 +10,7 @@ project "go2"
    language "C"
    files { "src/**.h", "src/**.c" }
    buildoptions { "-Wall" }
-   linkoptions { "-lopenal -lEGL -levdev -lgbm -lpthread -ldrm -lm -lrga" }
+   linkoptions { "-lopenal -lEGL -levdev -lgbm -lpthread -ldrm -lm -lrga -lpng" }
    includedirs { "/usr/include/libdrm" }
 
    configuration "Debug"

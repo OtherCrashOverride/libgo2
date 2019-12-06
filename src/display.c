@@ -29,6 +29,8 @@
 // #include <GLES2/gl2.h>
 // #include <GLES2/gl2ext.h>
 
+#include <png.h>
+
 
 typedef struct go2_display
 {
@@ -523,6 +525,141 @@ void go2_surface_blit(go2_surface_t* srcSurface, int srcX, int srcY, int srcWidt
     {
         printf("c_RkRgaBlit failed.\n");        
     }
+}
+
+int go2_surface_save_as_png(go2_surface_t* surface, const char* filename)
+{
+    png_structp png_ptr = NULL;
+    png_infop info_ptr = NULL;
+    png_bytep* row_pointers = NULL;
+
+
+    png_byte color_type = 0;
+    png_byte bit_depth = 0;    
+    switch (surface->format)
+    {     
+        case DRM_FORMAT_RGBA8888:
+            color_type = PNG_COLOR_TYPE_RGBA;
+            bit_depth = 8;
+            break;
+    
+        case DRM_FORMAT_RGB888:
+            color_type = PNG_COLOR_TYPE_RGB;
+            bit_depth = 8;
+            break;
+
+        case DRM_FORMAT_RGBX8888:
+        case DRM_FORMAT_RGB565:
+        case DRM_FORMAT_ARGB8888:
+        case DRM_FORMAT_XRGB8888:
+        case DRM_FORMAT_RGBA5551:
+        case DRM_FORMAT_RGBA4444:
+        case DRM_FORMAT_BGR888:
+
+        default:
+            printf("The image format is not supported.\n");
+            return -2;
+    }
+
+
+    // based on http://zarb.org/~gc/html/libpng.html
+
+    /* create file */
+    FILE *fp = fopen(filename, "wb");
+    if (!fp)
+    {
+        printf("fopen failed. filename='%s'\n", filename);
+        return -1;
+    }
+
+
+    /* initialize stuff */
+    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+
+    if (!png_ptr)
+    {
+        printf("png_create_write_struct failed.\n");
+        fclose(fp);
+        return -1;
+    }
+
+    info_ptr = png_create_info_struct(png_ptr);
+    if (!info_ptr)
+    {
+        printf("png_create_info_struct failed.\n");
+        fclose(fp);
+        return -1;
+    }
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        printf("init_io failed.\n");
+        goto out;
+    }
+
+    png_init_io(png_ptr, fp);
+
+
+    /* write header */
+    if (setjmp(png_jmpbuf(png_ptr)))
+     {
+        printf("write header failed.\n");
+        goto out;
+    }
+
+    png_set_IHDR(png_ptr, info_ptr, surface->width, surface->height,
+                 bit_depth, color_type, PNG_INTERLACE_NONE,
+                 PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+    png_write_info(png_ptr, info_ptr);
+
+
+    /* write bytes */
+    png_bytep src = (png_bytep)go2_surface_map(surface);
+    row_pointers = malloc(sizeof(png_bytep) * surface->height);        
+    for (int y = 0; y < surface->height; ++y)
+    {
+        row_pointers[y] = src + (surface->stride * y);
+    }
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        printf("writing bytes failed.\n");
+        goto out;
+    }
+
+    png_write_image(png_ptr, row_pointers);
+
+
+    /* end write */
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        printf("end of write failed.\n");
+        goto out;
+    }
+
+    png_write_end(png_ptr, NULL);
+
+    /* cleanup heap allocation */
+    free(row_pointers);
+
+    fclose(fp);
+    return 0;
+
+out:
+    if (info_ptr)
+        png_destroy_info_struct(png_ptr, &info_ptr);
+
+    if (png_ptr)
+        png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
+
+    if (row_pointers)
+        free(row_pointers);
+
+    if (fp)
+        fclose(fp);
+
+    return -1;
 }
 
 
