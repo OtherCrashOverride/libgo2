@@ -228,6 +228,99 @@ void go2_display_present(go2_display_t* display, go2_frame_buffer_t* frame_buffe
     }
 }
 
+const char* BACKLIGHT_BRIGHTNESS_NAME = "/sys/class/backlight/backlight/brightness";
+const char* BACKLIGHT_BRIGHTNESS_MAX_NAME = "/sys/class/backlight/backlight/max_brightness";
+#define BACKLIGHT_BUFFER_SIZE (127)
+
+uint32_t go2_display_backlight_get(go2_display_t* display)
+{
+    int fd;
+    int max = 255;
+    int value = 0;
+    char buffer[BACKLIGHT_BUFFER_SIZE + 1];
+
+    fd = open(BACKLIGHT_BRIGHTNESS_MAX_NAME, O_RDONLY);
+    if (fd > 0)
+    {
+        memset(buffer, 0, BACKLIGHT_BUFFER_SIZE + 1);
+
+        ssize_t count = read(fd, buffer, BACKLIGHT_BUFFER_SIZE);
+        if (count > 0)
+        {
+            max = atoi(buffer);
+        }
+
+        close(fd);
+
+        if (max == 0) return 0;
+    }
+
+    fd = open(BACKLIGHT_BRIGHTNESS_NAME, O_RDONLY);
+    if (fd > 0)
+    {
+        memset(buffer, 0, BACKLIGHT_BUFFER_SIZE + 1);
+
+        ssize_t count = read(fd, buffer, BACKLIGHT_BUFFER_SIZE);
+        if (count > 0)
+        {
+            value = atoi(buffer);
+        }
+
+        close(fd);        
+    }
+
+    float percent = value / (float)max * 100.0f;
+    return (uint32_t)percent;
+}
+
+void go2_display_backlight_set(go2_display_t* display, uint32_t value)
+{
+    int fd;
+    int max = 255;
+    char buffer[BACKLIGHT_BUFFER_SIZE + 1];
+
+    
+    if (value > 100) value = 100;
+
+    fd = open(BACKLIGHT_BRIGHTNESS_MAX_NAME, O_RDONLY);
+    if (fd > 0)
+    {
+        memset(buffer, 0, BACKLIGHT_BUFFER_SIZE + 1);
+
+        ssize_t count = read(fd, buffer, BACKLIGHT_BUFFER_SIZE);
+        if (count > 0)
+        {
+            max = atoi(buffer);
+        }
+
+        close(fd);
+
+        if (max == 0) return;
+    }
+
+    fd = open(BACKLIGHT_BRIGHTNESS_NAME, O_WRONLY);
+    if (fd > 0)
+    {
+        float percent = value / 100.0f * (float)max;
+        sprintf(buffer, "%d\n", (uint32_t)percent);
+
+        //printf("backlight=%d, max=%d\n", (uint32_t)percent, max);
+
+        ssize_t count = write(fd, buffer, strlen(buffer));
+        if (count < 0)
+        {
+            printf("go2_display_backlight_set write failed.\n");
+        }
+
+        close(fd);        
+    }
+    else
+    {
+        printf("go2_display_backlight_set open failed.\n");
+    }
+    
+}
+
 
 int go2_drm_format_get_bpp(uint32_t format)
 {

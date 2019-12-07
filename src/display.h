@@ -40,6 +40,8 @@ void go2_display_destroy(go2_display_t* display);
 int go2_display_width_get(go2_display_t* display);
 int go2_display_height_get(go2_display_t* display);
 void go2_display_present(go2_display_t* display, go2_frame_buffer_t* frame_buffer);
+uint32_t go2_display_backlight_get(go2_display_t* display);
+void go2_display_backlight_set(go2_display_t* display, uint32_t value);
 
 
 int go2_drm_format_get_bpp(uint32_t format);
@@ -58,7 +60,7 @@ void go2_surface_blit(go2_surface_t* srcSurface, int srcX, int srcY, int srcWidt
                       go2_surface_t* dstSurface, int dstX, int dstY, int dstWidth, int dstHeight,
                       go2_rotation_t rotation);
 int go2_surface_save_as_png(go2_surface_t* surface, const char* filename);
-     
+
 
 go2_frame_buffer_t* go2_frame_buffer_create(go2_surface_t* surface);
 void go2_frame_buffer_destroy(go2_frame_buffer_t* frame_buffer);
