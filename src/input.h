@@ -48,7 +48,7 @@ typedef struct
     go2_thumb_t thumb;
     go2_dpad_t dpad;
     go2_gamepad_buttons_t buttons;
-} go2_gamepad_t;
+} go2_gamepad_state_t;
 
 typedef struct go2_input go2_input_t;
 
@@ -75,8 +75,8 @@ extern "C" {
 
 go2_input_t* go2_input_create();
 void go2_input_destroy(go2_input_t* input);
-void go2_input_read(go2_input_t* input, go2_gamepad_t* outGamepadState);
-void go2_battery_read(go2_input_t* input, go2_battery_state_t* outBatteryState);
+void go2_input_gamepad_read(go2_input_t* input, go2_gamepad_state_t* outGamepadState);
+void go2_input_battery_read(go2_input_t* input, go2_battery_state_t* outBatteryState);
 
 #ifdef __cplusplus
 }

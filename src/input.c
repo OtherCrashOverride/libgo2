@@ -28,8 +28,8 @@ typedef struct go2_input
 {
     int fd;
     struct libevdev* dev;
-    go2_gamepad_t current_state;
-    go2_gamepad_t pending_state;
+    go2_gamepad_state_t current_state;
+    go2_gamepad_state_t pending_state;
     pthread_mutex_t gamepadMutex;
     pthread_t thread_id;
     go2_battery_state_t current_battery;
@@ -294,7 +294,7 @@ void go2_input_destroy(go2_input_t* input)
     free(input);
 }
 
-void go2_input_read(go2_input_t* input, go2_gamepad_t* outGamepadState)
+void go2_input_gamepad_read(go2_input_t* input, go2_gamepad_state_t* outGamepadState)
 {
     pthread_mutex_lock(&input->gamepadMutex);
     
@@ -303,7 +303,7 @@ void go2_input_read(go2_input_t* input, go2_gamepad_t* outGamepadState)
     pthread_mutex_unlock(&input->gamepadMutex);  
 }
 
-void go2_battery_read(go2_input_t* input, go2_battery_state_t* outBatteryState)
+void go2_input_battery_read(go2_input_t* input, go2_battery_state_t* outBatteryState)
 {
     pthread_mutex_lock(&input->gamepadMutex);
 
