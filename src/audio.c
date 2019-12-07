@@ -10,6 +10,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <alsa/asoundlib.h>
+#include <alsa/mixer.h>
 
 #define SOUND_SAMPLES_SIZE  (2048)
 #define SOUND_CHANNEL_COUNT 2
@@ -76,6 +78,10 @@ go2_audio_t* go2_audio_create(int frequency)
 
     result->isAudioInitialized = true;
 
+    // testing
+    //uint32_t vol = go2_audio_volume_get(result);
+    //printf("audio: vol=%d\n", vol);
+
     return result;
 
 
@@ -139,4 +145,69 @@ void go2_audio_submit(go2_audio_t* audio, const short* data, int frames)
     {
         alSourcePlay(audio->source);
     }
+}
+
+uint32_t go2_audio_volume_get(go2_audio_t* audio)
+{
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+    const char *card = "default";
+    const char *selem_name = "Playback";
+
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, card);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, selem_name);
+    
+    snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
+
+    long min;
+    long max;
+    snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+ 
+
+    //snd_mixer_selem_set_playback_volume_all(elem, value / 100.0f * max);
+    long volume;
+    snd_mixer_selem_get_playback_volume(elem, SND_MIXER_SCHN_MONO, &volume);
+
+    snd_mixer_close(handle);
+
+    uint32_t result = volume / (float)max * 100.0f;
+    //printf("volume: min=%ld, max=%ld, volume=%ld, result=%d\n", min, max, volume, result);
+
+    return result;
+}
+
+void go2_audio_volume_set(go2_audio_t* audio, uint32_t value)
+{
+    // https://gist.github.com/wolfg1969/3575700
+
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+    const char *card = "default";
+    const char *selem_name = "Playback";
+
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, card);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, selem_name);
+    
+    snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
+
+    long min;
+    long max;
+    snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+    //printf("volume: min=%ld, max=%ld\n", min, max);
+
+    snd_mixer_selem_set_playback_volume_all(elem, value / 100.0f * max);
+
+    snd_mixer_close(handle);
 }
