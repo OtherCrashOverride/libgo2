@@ -81,6 +81,8 @@ go2_audio_t* go2_audio_create(int frequency)
     // testing
     //uint32_t vol = go2_audio_volume_get(result);
     //printf("audio: vol=%d\n", vol);
+    //go2_audio_path_get(result);
+
 
     return result;
 
@@ -208,6 +210,59 @@ void go2_audio_volume_set(go2_audio_t* audio, uint32_t value)
     //printf("volume: min=%ld, max=%ld\n", min, max);
 
     snd_mixer_selem_set_playback_volume_all(elem, value / 100.0f * max);
+
+    snd_mixer_close(handle);
+}
+
+go2_audio_path_t go2_audio_path_get(go2_audio_t* audio)
+{
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+    const char *card = "default";
+    const char *selem_name = "Playback Path";
+
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, card);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, selem_name);
+    
+    snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
+
+    unsigned int value;
+    snd_mixer_selem_get_enum_item(elem, SND_MIXER_SCHN_MONO, &value);
+
+    // char name[128];
+    // snd_mixer_selem_get_enum_item_name(elem, value, 128, name);
+    // printf("audio path: value=%d [%s]\n", value, name);
+
+    snd_mixer_close(handle);
+
+    return (go2_audio_path_t)value;
+}
+
+void go2_audio_path_set(go2_audio_t* audio, go2_audio_path_t value)
+{
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+    const char *card = "default";
+    const char *selem_name = "Playback Path";
+
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, card);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, selem_name);
+    
+    snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
+
+    snd_mixer_selem_set_enum_item(elem, SND_MIXER_SCHN_MONO, (unsigned int)value);
 
     snd_mixer_close(handle);
 }
