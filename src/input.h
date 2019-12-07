@@ -58,6 +58,7 @@ typedef enum
     Battery_Status_Unknown = 0,
     Battery_Status_Discharging,
     Battery_Status_Charging,
+    Battery_Status_Full,
 
     Battery_Status_MAX = 0x7fffffff
 } go2_battery_status_t;

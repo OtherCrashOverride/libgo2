@@ -68,6 +68,10 @@ static void* battery_task(void* arg)
                 {
                     battery.status = Battery_Status_Charging;
                 }
+                else if (buffer[0] == 'F')
+                {
+                    battery.status = Battery_Status_Full;
+                }
                 else
                 {
                     battery.status = Battery_Status_Unknown;
