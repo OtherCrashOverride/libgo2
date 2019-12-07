@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 
 typedef struct 
 {
@@ -51,6 +53,22 @@ typedef struct
 typedef struct go2_input go2_input_t;
 
 
+typedef enum 
+{
+    Battery_Status_Unknown = 0,
+    Battery_Status_Discharging,
+    Battery_Status_Charging,
+
+    Battery_Status_MAX = 0x7fffffff
+} go2_battery_status_t;
+
+typedef struct
+{
+    uint32_t level;
+    go2_battery_status_t status;
+} go2_battery_state_t;
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -58,6 +76,7 @@ extern "C" {
 go2_input_t* go2_input_create();
 void go2_input_destroy(go2_input_t* input);
 void go2_input_read(go2_input_t* input, go2_gamepad_t* outGamepadState);
+void go2_battery_read(go2_input_t* input, go2_battery_state_t* outBatteryState);
 
 #ifdef __cplusplus
 }

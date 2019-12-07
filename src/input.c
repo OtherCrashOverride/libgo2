@@ -17,7 +17,11 @@
 #include <linux/limits.h>
 
 
+#define BATTERY_BUFFER_SIZE (128)
+
 static const char* EVDEV_NAME = "/dev/input/by-path/platform-odroidgo2-joypad-event-joystick";
+static const char* BATTERY_STATUS_NAME = "/sys/class/power_supply/battery/status";
+static const char* BATTERY_CAPACITY_NAME = "/sys/class/power_supply/battery/capacity";
 
 
 typedef struct go2_input
@@ -28,7 +32,85 @@ typedef struct go2_input
     go2_gamepad_t pending_state;
     pthread_mutex_t gamepadMutex;
     pthread_t thread_id;
+    go2_battery_state_t current_battery;
+    pthread_t battery_thread;
 } go2_input_t;
+
+
+static void* battery_task(void* arg)
+{
+    go2_input_t* input = (go2_input_t*)arg;
+    int fd;
+    void* result = 0;
+    char buffer[BATTERY_BUFFER_SIZE + 1];
+    go2_battery_state_t battery;
+
+
+    memset(&battery, 0, sizeof(battery));
+
+
+    while(true)
+    {
+        fd = open(BATTERY_STATUS_NAME, O_RDONLY);
+        if (fd > 0)
+        {
+            memset(buffer, 0, BATTERY_BUFFER_SIZE + 1);
+            ssize_t count = read(fd, buffer, BATTERY_BUFFER_SIZE);
+            if (count > 0)
+            {
+                //printf("BATT: buffer='%s'\n", buffer);
+
+                if (buffer[0] == 'D')
+                {
+                    battery.status = Battery_Status_Discharging;
+                }
+                else if (buffer[0] == 'C')
+                {
+                    battery.status = Battery_Status_Charging;
+                }
+                else
+                {
+                    battery.status = Battery_Status_Unknown;
+                }                
+            }
+
+            close(fd);
+        }
+
+        fd = open(BATTERY_CAPACITY_NAME, O_RDONLY);
+        if (fd > 0)
+        {
+            memset(buffer, 0, BATTERY_BUFFER_SIZE + 1);
+            ssize_t count = read(fd, buffer, BATTERY_BUFFER_SIZE);
+            if (count > 0)
+            {
+                battery.level = atoi(buffer);
+            }
+            else
+            {
+                battery.level = 0;
+            }
+            
+            close(fd);
+        }
+
+
+        pthread_mutex_lock(&input->gamepadMutex);
+
+        input->current_battery = battery;
+
+        pthread_mutex_unlock(&input->gamepadMutex); 
+        
+        //printf("BATT: status=%d, level=%d\n", input->current_battery.status, input->current_battery.level);
+
+        sleep(1);      
+    }
+
+    //printf("BATT: exit.\n");
+    return result;
+}
+
+
 
 
 static void* input_task(void* arg)
@@ -150,6 +232,9 @@ go2_input_t* go2_input_create()
     memset(result, 0, sizeof(*result));
 
 
+
+
+
     result->fd = open(EVDEV_NAME, O_RDONLY);
     if (result->fd < 0)
     {
@@ -178,6 +263,12 @@ go2_input_t* go2_input_create()
             printf("could not create input_task thread\n");
             goto err_01;
         }
+
+        if(pthread_create(&result->battery_thread, NULL, battery_task, (void*)result) < 0)
+        {
+            printf("could not create battery_task thread\n");
+        }
+
     }
 
     return result;
@@ -210,4 +301,13 @@ void go2_input_read(go2_input_t* input, go2_gamepad_t* outGamepadState)
     *outGamepadState = input->current_state;        
 
     pthread_mutex_unlock(&input->gamepadMutex);  
+}
+
+void go2_battery_read(go2_input_t* input, go2_battery_state_t* outBatteryState)
+{
+    pthread_mutex_lock(&input->gamepadMutex);
+
+    *outBatteryState = input->current_battery;
+
+    pthread_mutex_unlock(&input->gamepadMutex);
 }
