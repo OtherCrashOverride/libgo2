@@ -119,11 +119,14 @@ static void* battery_task(void* arg)
 
 static void* input_task(void* arg)
 {
-    const float VALUE_MAX = 512.0f;
     go2_input_t* input = (go2_input_t*)arg;
 
     if (!input->dev) return NULL;
 
+    const int abs_x_max = libevdev_get_abs_maximum(input->dev, ABS_X);
+    const int abs_y_max = libevdev_get_abs_maximum(input->dev, ABS_Y);
+
+    //printf("abs: x_max=%d, y_max=%d\n", abs_x_max, abs_y_max);
 
 	while (true)
 	{
@@ -203,10 +206,10 @@ static void* input_task(void* arg)
                 switch (ev.code)
                 {
                     case ABS_X:
-                        input->pending_state.thumb.x = ev.value / VALUE_MAX;
+                        input->pending_state.thumb.x = ev.value / (float)abs_x_max;
                         break;
                     case ABS_Y:
-                        input->pending_state.thumb.y = ev.value / VALUE_MAX;
+                        input->pending_state.thumb.y = ev.value / (float)abs_y_max;
                         break;
                 }
             }
