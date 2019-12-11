@@ -123,8 +123,8 @@ static void* input_task(void* arg)
 
     if (!input->dev) return NULL;
 
-    const int abs_x_max = libevdev_get_abs_maximum(input->dev, ABS_X);
-    const int abs_y_max = libevdev_get_abs_maximum(input->dev, ABS_Y);
+    const int abs_x_max = 512; //libevdev_get_abs_maximum(input->dev, ABS_X);
+    const int abs_y_max = 512; //libevdev_get_abs_maximum(input->dev, ABS_Y);
 
     //printf("abs: x_max=%d, y_max=%d\n", abs_x_max, abs_y_max);
 
