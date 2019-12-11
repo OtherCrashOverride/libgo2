@@ -34,6 +34,7 @@ typedef struct go2_input
     pthread_t thread_id;
     go2_battery_state_t current_battery;
     pthread_t battery_thread;
+    bool terminating;
 } go2_input_t;
 
 
@@ -49,7 +50,7 @@ static void* battery_task(void* arg)
     memset(&battery, 0, sizeof(battery));
 
 
-    while(true)
+    while(!input->terminating)
     {
         fd = open(BATTERY_STATUS_NAME, O_RDONLY);
         if (fd > 0)
@@ -128,7 +129,7 @@ static void* input_task(void* arg)
 
     //printf("abs: x_max=%d, y_max=%d\n", abs_x_max, abs_y_max);
 
-	while (true)
+	while (!input->terminating)
 	{
 		/* EAGAIN is returned when the queue is empty */
 		struct input_event ev;
@@ -223,6 +224,8 @@ static void* input_task(void* arg)
             }
         }
     }
+
+    return NULL;
 }
 
 go2_input_t* go2_input_create()
@@ -294,7 +297,12 @@ out:
 
 void go2_input_destroy(go2_input_t* input)
 {
-    // TODO: Kill thread and join
+    input->terminating = true;
+
+    pthread_cancel(input->thread_id);
+
+    pthread_join(input->thread_id, NULL);
+    pthread_join(input->battery_thread, NULL);
 
     libevdev_free(input->dev);
     close(input->fd);
