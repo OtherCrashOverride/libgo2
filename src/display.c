@@ -949,16 +949,20 @@ void go2_presenter_destroy(go2_presenter_t* presenter)
     {
         go2_frame_buffer_t* frameBuffer = go2_queue_pop(presenter->usedFrameBuffers);
         
-        go2_surface_destroy(frameBuffer->surface);
+        go2_surface_t* surface = frameBuffer->surface;
+        
         go2_frame_buffer_destroy(frameBuffer);
+        go2_surface_destroy(surface);
     }
 
     while(go2_queue_count_get(presenter->freeFrameBuffers) > 0)
     {
         go2_frame_buffer_t* frameBuffer = go2_queue_pop(presenter->freeFrameBuffers);
         
-        go2_surface_destroy(frameBuffer->surface);
+        go2_surface_t* surface = frameBuffer->surface;
+
         go2_frame_buffer_destroy(frameBuffer);
+        go2_surface_destroy(surface);
     }
 
     free(presenter);
