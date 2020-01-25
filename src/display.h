@@ -72,6 +72,7 @@ int go2_surface_width_get(go2_surface_t* surface);
 int go2_surface_height_get(go2_surface_t* surface);
 uint32_t go2_surface_format_get(go2_surface_t* surface);
 int go2_surface_stride_get(go2_surface_t* surface);
+go2_display_t* go2_surface_display_get(go2_surface_t* surface);
 int go2_surface_prime_fd(go2_surface_t* surface);
 void* go2_surface_map(go2_surface_t* surface);
 void go2_surface_unmap(go2_surface_t* surface);

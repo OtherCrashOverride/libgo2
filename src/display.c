@@ -485,6 +485,11 @@ int go2_surface_stride_get(go2_surface_t* surface)
     return surface->stride;
 }
 
+go2_display_t* go2_surface_display_get(go2_surface_t* surface)
+{
+    return surface->display;
+}
+
 int go2_surface_prime_fd(go2_surface_t* surface)
 {
     if (surface->prime_fd <= 0)
