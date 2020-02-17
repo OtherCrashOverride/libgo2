@@ -147,7 +147,31 @@ static void* input_task(void* arg)
     const int abs_y_max = 512; //libevdev_get_abs_maximum(input->dev, ABS_Y);
 
     //printf("abs: x_max=%d, y_max=%d\n", abs_x_max, abs_y_max);
+    
 
+    // Get current state
+    input->pending_state.dpad.up = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_UP) ? ButtonState_Pressed : ButtonState_Released;
+    input->pending_state.dpad.down = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_DOWN) ? ButtonState_Pressed : ButtonState_Released;
+    input->pending_state.dpad.left = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_LEFT) ? ButtonState_Pressed : ButtonState_Released;
+    input->pending_state.dpad.right = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_RIGHT) ? ButtonState_Pressed : ButtonState_Released;
+
+    input->pending_state.buttons.a = libevdev_get_event_value(input->dev, EV_KEY, BTN_EAST) ? ButtonState_Pressed : ButtonState_Released;
+    input->pending_state.buttons.b = libevdev_get_event_value(input->dev, EV_KEY, BTN_SOUTH) ? ButtonState_Pressed : ButtonState_Released;
+    input->pending_state.buttons.x = libevdev_get_event_value(input->dev, EV_KEY, BTN_NORTH) ? ButtonState_Pressed : ButtonState_Released;
+    input->pending_state.buttons.y = libevdev_get_event_value(input->dev, EV_KEY, BTN_WEST) ? ButtonState_Pressed : ButtonState_Released;
+
+    input->pending_state.buttons.top_left = libevdev_get_event_value(input->dev, EV_KEY, BTN_TL) ? ButtonState_Pressed : ButtonState_Released;
+    input->pending_state.buttons.top_right = libevdev_get_event_value(input->dev, EV_KEY, BTN_TR) ? ButtonState_Pressed : ButtonState_Released;
+
+    input->current_state.buttons.f1 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY1) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons.f2 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY2) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons.f3 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY3) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons.f4 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY4) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons.f5 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY5) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons.f5 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY6) ? ButtonState_Pressed : ButtonState_Released;
+
+
+    // Events
 	while (!input->terminating)
 	{
 		/* EAGAIN is returned when the queue is empty */
