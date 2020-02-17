@@ -1263,6 +1263,11 @@ void go2_context_destroy(go2_context_t* context)
     free(context);
 }
 
+void* go2_context_egldisplay_get(go2_context_t* context)
+{
+    return context->eglDisplay;
+}
+
 void go2_context_make_current(go2_context_t* context)
 {
     EGLBoolean success = eglMakeCurrent(context->eglDisplay, context->eglSurface, context->eglSurface, context->eglContext);

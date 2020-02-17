@@ -94,6 +94,7 @@ void go2_presenter_post(go2_presenter_t* presenter, go2_surface_t* surface, int 
 
 go2_context_t* go2_context_create(go2_display_t* display, int width, int height, const go2_context_attributes_t* attributes);
 void go2_context_destroy(go2_context_t* context);
+void* go2_context_egldisplay_get(go2_context_t* context);
 void go2_context_make_current(go2_context_t* context);
 void go2_context_swap_buffers(go2_context_t* context);
 go2_surface_t* go2_context_surface_lock(go2_context_t* context);
