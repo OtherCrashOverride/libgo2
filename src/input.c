@@ -43,12 +43,22 @@ static const char* BATTERY_STATUS_NAME = "/sys/class/power_supply/battery/status
 static const char* BATTERY_CAPACITY_NAME = "/sys/class/power_supply/battery/capacity";
 
 
+#define GO2_THUMBSTICK_COUNT (Go2InputThumbstick_Left + 1)
+#define GO2_BUTTON_COUNT (Go2InputButton_TriggerRight + 1)
+
+
+typedef struct go2_input_state
+{
+    go2_thumb_t thumbs[GO2_THUMBSTICK_COUNT];
+    go2_button_state_t buttons[GO2_BUTTON_COUNT];
+} go2_input_state_t;
+
 typedef struct go2_input
 {
     int fd;
     struct libevdev* dev;
-    go2_gamepad_state_t current_state;
-    go2_gamepad_state_t pending_state;
+    go2_input_state_t current_state;
+    go2_input_state_t pending_state;    
     pthread_mutex_t gamepadMutex;
     pthread_t thread_id;
     go2_battery_state_t current_battery;
@@ -143,32 +153,35 @@ static void* input_task(void* arg)
 
     if (!input->dev) return NULL;
 
-    const int abs_x_max = 512; //libevdev_get_abs_maximum(input->dev, ABS_X);
-    const int abs_y_max = 512; //libevdev_get_abs_maximum(input->dev, ABS_Y);
+    const int abs_x_max = libevdev_get_abs_maximum(input->dev, ABS_X);
+    const int abs_y_max = libevdev_get_abs_maximum(input->dev, ABS_Y);
 
     //printf("abs: x_max=%d, y_max=%d\n", abs_x_max, abs_y_max);
     
 
     // Get current state
-    input->pending_state.dpad.up = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_UP) ? ButtonState_Pressed : ButtonState_Released;
-    input->pending_state.dpad.down = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_DOWN) ? ButtonState_Pressed : ButtonState_Released;
-    input->pending_state.dpad.left = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_LEFT) ? ButtonState_Pressed : ButtonState_Released;
-    input->pending_state.dpad.right = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_RIGHT) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_DPadUp] = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_UP) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_DPadDown] = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_DOWN) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_DPadLeft] = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_LEFT) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_DPadRight] = libevdev_get_event_value(input->dev, EV_KEY, BTN_DPAD_RIGHT) ? ButtonState_Pressed : ButtonState_Released;
 
-    input->pending_state.buttons.a = libevdev_get_event_value(input->dev, EV_KEY, BTN_EAST) ? ButtonState_Pressed : ButtonState_Released;
-    input->pending_state.buttons.b = libevdev_get_event_value(input->dev, EV_KEY, BTN_SOUTH) ? ButtonState_Pressed : ButtonState_Released;
-    input->pending_state.buttons.x = libevdev_get_event_value(input->dev, EV_KEY, BTN_NORTH) ? ButtonState_Pressed : ButtonState_Released;
-    input->pending_state.buttons.y = libevdev_get_event_value(input->dev, EV_KEY, BTN_WEST) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_A] = libevdev_get_event_value(input->dev, EV_KEY, BTN_EAST) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_B] = libevdev_get_event_value(input->dev, EV_KEY, BTN_SOUTH) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_X] = libevdev_get_event_value(input->dev, EV_KEY, BTN_NORTH) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_Y] = libevdev_get_event_value(input->dev, EV_KEY, BTN_WEST) ? ButtonState_Pressed : ButtonState_Released;
 
-    input->pending_state.buttons.top_left = libevdev_get_event_value(input->dev, EV_KEY, BTN_TL) ? ButtonState_Pressed : ButtonState_Released;
-    input->pending_state.buttons.top_right = libevdev_get_event_value(input->dev, EV_KEY, BTN_TR) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_TopLeft] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TL) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_TopRight] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TR) ? ButtonState_Pressed : ButtonState_Released;
 
-    input->current_state.buttons.f1 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY1) ? ButtonState_Pressed : ButtonState_Released;
-    input->current_state.buttons.f2 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY2) ? ButtonState_Pressed : ButtonState_Released;
-    input->current_state.buttons.f3 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY3) ? ButtonState_Pressed : ButtonState_Released;
-    input->current_state.buttons.f4 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY4) ? ButtonState_Pressed : ButtonState_Released;
-    input->current_state.buttons.f5 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY5) ? ButtonState_Pressed : ButtonState_Released;
-    input->current_state.buttons.f5 = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY6) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_F1] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY1) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_F2] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY2) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_F3] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY3) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_F4] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY4) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_F5] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY5) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_F6] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TRIGGER_HAPPY6) ? ButtonState_Pressed : ButtonState_Released;
+
+    input->current_state.buttons[Go2InputButton_TriggerLeft] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TL2) ? ButtonState_Pressed : ButtonState_Released;
+    input->current_state.buttons[Go2InputButton_TriggerRight] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TR2) ? ButtonState_Pressed : ButtonState_Released;
 
 
     // Events
@@ -193,56 +206,64 @@ static void* input_task(void* arg)
                 switch (ev.code)
                 {
                     case BTN_DPAD_UP:
-                        input->pending_state.dpad.up = state;
+                        input->pending_state.buttons[Go2InputButton_DPadUp] = state;
                         break;
                     case BTN_DPAD_DOWN:
-                        input->pending_state.dpad.down = state;
+                        input->pending_state.buttons[Go2InputButton_DPadDown] = state;
                         break;
                     case BTN_DPAD_LEFT:
-                        input->pending_state.dpad.left = state;
+                        input->pending_state.buttons[Go2InputButton_DPadLeft] = state;
                         break;
                     case BTN_DPAD_RIGHT:
-                        input->pending_state.dpad.right = state;
+                        input->pending_state.buttons[Go2InputButton_DPadRight] = state;
                         break;
 
                     case BTN_EAST:
-                        input->pending_state.buttons.a = state;
+                        input->pending_state.buttons[Go2InputButton_A] = state;
                         break;
                     case BTN_SOUTH:
-                        input->pending_state.buttons.b = state;
+                        input->pending_state.buttons[Go2InputButton_B] = state;
                         break;
                     case BTN_NORTH:
-                        input->pending_state.buttons.x = state;
+                        input->pending_state.buttons[Go2InputButton_X] = state;
                         break;
                     case BTN_WEST:
-                        input->pending_state.buttons.y = state;
+                        input->pending_state.buttons[Go2InputButton_Y] = state;
                         break;
 
                     case BTN_TL:
-                        input->pending_state.buttons.top_left = state;
+                        input->pending_state.buttons[Go2InputButton_TopLeft] = state;
                         break;                    
                     case BTN_TR:          
-                        input->pending_state.buttons.top_right = state;
+                        input->pending_state.buttons[Go2InputButton_TopRight] = state;
                         break;
 
                     case BTN_TRIGGER_HAPPY1:
-                        input->pending_state.buttons.f1 = state;
+                        input->pending_state.buttons[Go2InputButton_F1] = state;
                         break;
                     case BTN_TRIGGER_HAPPY2:
-                        input->pending_state.buttons.f2 = state;
+                        input->pending_state.buttons[Go2InputButton_F2] = state;
                         break;
                     case BTN_TRIGGER_HAPPY3:
-                        input->pending_state.buttons.f3 = state;
+                        input->pending_state.buttons[Go2InputButton_F3] = state;
                         break;
                     case BTN_TRIGGER_HAPPY4:
-                        input->pending_state.buttons.f4 = state;
+                        input->pending_state.buttons[Go2InputButton_F4] = state;
                         break;
                     case BTN_TRIGGER_HAPPY5:
-                        input->pending_state.buttons.f5 = state;
+                        input->pending_state.buttons[Go2InputButton_F5] = state;
                         break;
                     case BTN_TRIGGER_HAPPY6:
-                        input->pending_state.buttons.f6 = state;
+                        input->pending_state.buttons[Go2InputButton_F6] = state;
                         break;
+
+                    case BTN_TL2:
+                        input->pending_state.buttons[Go2InputButton_TriggerLeft] = state;
+                        break;                    
+                    case BTN_TR2:          
+                        input->pending_state.buttons[Go2InputButton_TriggerRight] = state;
+                        break;
+
                 }
             }
             else if (ev.type == EV_ABS)
@@ -250,10 +271,10 @@ static void* input_task(void* arg)
                 switch (ev.code)
                 {
                     case ABS_X:
-                        input->pending_state.thumb.x = ev.value / (float)abs_x_max;
+                        input->pending_state.thumbs[Go2InputThumbstick_Left].x = ev.value / (float)abs_x_max;
                         break;
                     case ABS_Y:
-                        input->pending_state.thumb.y = ev.value / (float)abs_y_max;
+                        input->pending_state.thumbs[Go2InputThumbstick_Left].y = ev.value / (float)abs_y_max;
                         break;
                 }
             }
@@ -356,7 +377,28 @@ void go2_input_gamepad_read(go2_input_t* input, go2_gamepad_state_t* outGamepadS
 {
     pthread_mutex_lock(&input->gamepadMutex);
     
-    *outGamepadState = input->current_state;        
+    outGamepadState->thumb.x = input->current_state.thumbs[Go2InputThumbstick_Left].x;
+    outGamepadState->thumb.y = input->current_state.thumbs[Go2InputThumbstick_Left].y;
+
+    outGamepadState->dpad.up = input->current_state.buttons[Go2InputButton_DPadUp];
+    outGamepadState->dpad.down = input->current_state.buttons[Go2InputButton_DPadDown];
+    outGamepadState->dpad.left = input->current_state.buttons[Go2InputButton_DPadLeft];
+    outGamepadState->dpad.right = input->current_state.buttons[Go2InputButton_DPadRight];
+
+    outGamepadState->buttons.a = input->current_state.buttons[Go2InputButton_A];
+    outGamepadState->buttons.b = input->current_state.buttons[Go2InputButton_B];
+    outGamepadState->buttons.x = input->current_state.buttons[Go2InputButton_X];
+    outGamepadState->buttons.y = input->current_state.buttons[Go2InputButton_Y];
+
+    outGamepadState->buttons.top_left = input->current_state.buttons[Go2InputButton_TopLeft];
+    outGamepadState->buttons.top_right = input->current_state.buttons[Go2InputButton_TopRight];
+
+    outGamepadState->buttons.f1 = input->current_state.buttons[Go2InputButton_F1];
+    outGamepadState->buttons.f2 = input->current_state.buttons[Go2InputButton_F2];
+    outGamepadState->buttons.f3 = input->current_state.buttons[Go2InputButton_F3];
+    outGamepadState->buttons.f4 = input->current_state.buttons[Go2InputButton_F4];
+    outGamepadState->buttons.f5 = input->current_state.buttons[Go2InputButton_F5];
+    outGamepadState->buttons.f6 = input->current_state.buttons[Go2InputButton_F6];
 
     pthread_mutex_unlock(&input->gamepadMutex);  
 }

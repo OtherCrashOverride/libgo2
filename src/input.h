@@ -89,6 +89,48 @@ typedef struct
 } go2_battery_state_t;
 
 
+
+// v1.1 API
+typedef enum
+{
+    Go2InputFeatureFlags_None = (1 << 0),
+    Go2InputFeatureFlags_Triggers = (1 << 1)
+} go2_input_feature_flags_t;
+
+typedef enum
+{
+    Go2InputThumbstick_Left = 0
+} go2_input_thumbstick_t;
+
+typedef enum
+{
+    Go2InputButton_DPadUp = 0,
+    Go2InputButton_DPadDown,
+    Go2InputButton_DPadLeft,
+    Go2InputButton_DPadRight,
+
+    Go2InputButton_A,
+    Go2InputButton_B,
+    Go2InputButton_X,
+    Go2InputButton_Y,
+
+    Go2InputButton_F1,
+    Go2InputButton_F2,
+    Go2InputButton_F3,
+    Go2InputButton_F4,
+    Go2InputButton_F5,
+    Go2InputButton_F6,
+
+    Go2InputButton_TopLeft,
+    Go2InputButton_TopRight,
+
+    Go2InputButton_TriggerLeft,
+    Go2InputButton_TriggerRight
+} go2_input_button_t;
+
+typedef struct go2_input_state go2_input_state_t;
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -97,6 +139,17 @@ go2_input_t* go2_input_create();
 void go2_input_destroy(go2_input_t* input);
 void go2_input_gamepad_read(go2_input_t* input, go2_gamepad_state_t* outGamepadState);
 void go2_input_battery_read(go2_input_t* input, go2_battery_state_t* outBatteryState);
+
+
+// v1.1 API
+go2_input_feature_flags_t go2_input_features_get(go2_input_t* input);
+void go2_input_state_read(go2_input_state_t* outState);
+
+
+go2_input_state_t* go2_input_state_create();
+void go2_input_state_destroy(go2_input_state_t* state);
+go2_button_state_t go2_input_state_button_get(go2_input_state_t* state, go2_input_button_t button);
+go2_thumb_t go2_input_state_thumbstick_get(go2_input_state_t* state, go2_input_thumbstick_t thumbstick);
 
 #ifdef __cplusplus
 }
