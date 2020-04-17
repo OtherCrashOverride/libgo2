@@ -18,6 +18,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "input.h"
+#include "hardware.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -294,6 +295,7 @@ static void* input_task(void* arg)
 
 go2_input_t* go2_input_create()
 {
+
 	int rc = 1;
 
     go2_input_t* result = malloc(sizeof(*result));
@@ -410,4 +412,60 @@ void go2_input_battery_read(go2_input_t* input, go2_battery_state_t* outBatteryS
     *outBatteryState = input->current_battery;
 
     pthread_mutex_unlock(&input->gamepadMutex);
+}
+
+
+// v1.1 API
+go2_input_feature_flags_t go2_input_features_get(go2_input_t* input)
+{
+    go2_input_feature_flags_t result = Go2InputFeatureFlags_None;
+
+    //if (go2_hardware_revision_get() == Go2HardwareRevision_V1_1)
+
+    if (libevdev_has_event_code(input->dev, EV_KEY, BTN_TL2) &&
+        libevdev_has_event_code(input->dev, EV_KEY, BTN_TR2))
+    {
+        result |= Go2InputFeatureFlags_Triggers;
+    }
+
+    return result;
+}
+
+void go2_input_state_read(go2_input_t* input, go2_input_state_t* outState)
+{
+    *outState = input->current_state;
+}
+
+
+go2_input_state_t* go2_input_state_create()
+{
+    go2_input_state_t* result = NULL;
+
+    result = malloc(sizeof(*result));
+    if (result)
+    {
+        memset(result, 0, sizeof(*result));
+    }
+
+    return result;
+}
+
+void go2_input_state_destroy(go2_input_state_t* state)
+{
+    free(state);
+}
+
+go2_button_state_t go2_input_state_button_get(go2_input_state_t* state, go2_input_button_t button)
+{
+    return state->buttons[button];
+}
+
+void go2_input_state_button_set(go2_input_state_t* state, go2_input_button_t button, go2_button_state_t value)
+{
+    state->buttons[button] = value;
+}
+
+go2_thumb_t go2_input_state_thumbstick_get(go2_input_state_t* state, go2_input_thumbstick_t thumbstick)
+{
+    return state->thumbs[thumbstick];
 }

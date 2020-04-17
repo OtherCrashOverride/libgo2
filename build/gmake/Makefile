@@ -65,9 +65,10 @@ endif
 
 OBJECTS := \
 	$(OBJDIR)/audio.o \
-	$(OBJDIR)/input.o \
-	$(OBJDIR)/display.o \
+	$(OBJDIR)/hardware.o \
 	$(OBJDIR)/queue.o \
+	$(OBJDIR)/display.o \
+	$(OBJDIR)/input.o \
 
 RESOURCES := \
 
@@ -131,13 +132,16 @@ endif
 $(OBJDIR)/audio.o: ../../src/audio.c
 	@echo $(notdir $<)
 	$(SILENT) $(CC) $(CFLAGS) -o "$@" -c "$<"
-$(OBJDIR)/input.o: ../../src/input.c
+$(OBJDIR)/hardware.o: ../../src/hardware.c
+	@echo $(notdir $<)
+	$(SILENT) $(CC) $(CFLAGS) -o "$@" -c "$<"
+$(OBJDIR)/queue.o: ../../src/queue.c
 	@echo $(notdir $<)
 	$(SILENT) $(CC) $(CFLAGS) -o "$@" -c "$<"
 $(OBJDIR)/display.o: ../../src/display.c
 	@echo $(notdir $<)
 	$(SILENT) $(CC) $(CFLAGS) -o "$@" -c "$<"
-$(OBJDIR)/queue.o: ../../src/queue.c
+$(OBJDIR)/input.o: ../../src/input.c
 	@echo $(notdir $<)
 	$(SILENT) $(CC) $(CFLAGS) -o "$@" -c "$<"
 

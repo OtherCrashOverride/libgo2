@@ -143,12 +143,13 @@ void go2_input_battery_read(go2_input_t* input, go2_battery_state_t* outBatteryS
 
 // v1.1 API
 go2_input_feature_flags_t go2_input_features_get(go2_input_t* input);
-void go2_input_state_read(go2_input_state_t* outState);
+void go2_input_state_read(go2_input_t* input, go2_input_state_t* outState);
 
 
 go2_input_state_t* go2_input_state_create();
 void go2_input_state_destroy(go2_input_state_t* state);
 go2_button_state_t go2_input_state_button_get(go2_input_state_t* state, go2_input_button_t button);
+void go2_input_state_button_set(go2_input_state_t* state, go2_input_button_t button, go2_button_state_t value);
 go2_thumb_t go2_input_state_thumbstick_get(go2_input_state_t* state, go2_input_thumbstick_t thumbstick);
 
 #ifdef __cplusplus
