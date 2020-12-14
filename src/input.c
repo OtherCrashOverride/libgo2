@@ -40,6 +40,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #define BATTERY_BUFFER_SIZE (128)
 
 static const char* EVDEV_NAME = "/dev/input/by-path/platform-odroidgo2-joypad-event-joystick";
+static const char* EVDEV_NAME_2 = "/dev/input/by-path/platform-odroidgo3-joypad-event-joystick";
 static const char* BATTERY_STATUS_NAME = "/sys/class/power_supply/battery/status";
 static const char* BATTERY_CAPACITY_NAME = "/sys/class/power_supply/battery/capacity";
 
@@ -314,9 +315,14 @@ go2_input_t* go2_input_create()
     result->fd = open(EVDEV_NAME, O_RDONLY);
     if (result->fd < 0)
     {
-        printf("Joystick: No gamepad found.\n");
+        result->fd = open(EVDEV_NAME_2, O_RDONLY);
+        if (result->fd < 0)
+        {
+            printf("Joystick: No gamepad found.\n");
+        }
     }
-    else
+    
+    if (result->fd > -1)
     {    
         rc = libevdev_new_from_fd(result->fd, &result->dev);
         if (rc < 0) {
