@@ -45,7 +45,7 @@ static const char* BATTERY_STATUS_NAME = "/sys/class/power_supply/battery/status
 static const char* BATTERY_CAPACITY_NAME = "/sys/class/power_supply/battery/capacity";
 
 
-#define GO2_THUMBSTICK_COUNT (Go2InputThumbstick_Left + 1)
+#define GO2_THUMBSTICK_COUNT (Go2InputThumbstick_Right + 1)
 #define GO2_BUTTON_COUNT (Go2InputButton_TriggerRight + 1)
 
 
@@ -158,6 +158,9 @@ static void* input_task(void* arg)
     const int abs_x_max = libevdev_get_abs_maximum(input->dev, ABS_X);
     const int abs_y_max = libevdev_get_abs_maximum(input->dev, ABS_Y);
 
+    const int abs_rx_max = libevdev_get_abs_maximum(input->dev, ABS_RX);
+    const int abs_ry_max = libevdev_get_abs_maximum(input->dev, ABS_RY);
+
     //printf("abs: x_max=%d, y_max=%d\n", abs_x_max, abs_y_max);
     
 
@@ -184,6 +187,12 @@ static void* input_task(void* arg)
 
     input->current_state.buttons[Go2InputButton_TriggerLeft] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TL2) ? ButtonState_Pressed : ButtonState_Released;
     input->current_state.buttons[Go2InputButton_TriggerRight] = libevdev_get_event_value(input->dev, EV_KEY, BTN_TR2) ? ButtonState_Pressed : ButtonState_Released;
+
+    input->current_state.thumbs[Go2InputThumbstick_Left].x = libevdev_get_event_value(input->dev, EV_ABS, ABS_X) / (float)abs_x_max;
+    input->current_state.thumbs[Go2InputThumbstick_Left].y = libevdev_get_event_value(input->dev, EV_ABS, ABS_Y) / (float)abs_y_max;
+
+    input->current_state.thumbs[Go2InputThumbstick_Right].x = libevdev_get_event_value(input->dev, EV_ABS, ABS_RX) / (float)abs_rx_max;
+    input->current_state.thumbs[Go2InputThumbstick_Right].y = libevdev_get_event_value(input->dev, EV_ABS, ABS_RY) / (float)abs_ry_max;
 
 
     // Events
@@ -277,6 +286,13 @@ static void* input_task(void* arg)
                         break;
                     case ABS_Y:
                         input->pending_state.thumbs[Go2InputThumbstick_Left].y = ev.value / (float)abs_y_max;
+                        break;
+
+                    case ABS_RX:
+                        input->pending_state.thumbs[Go2InputThumbstick_Right].x = ev.value / (float)abs_rx_max;
+                        break;
+                    case ABS_RY:
+                        input->pending_state.thumbs[Go2InputThumbstick_Right].y = ev.value / (float)abs_ry_max;
                         break;
                 }
             }
@@ -432,6 +448,12 @@ go2_input_feature_flags_t go2_input_features_get(go2_input_t* input)
         libevdev_has_event_code(input->dev, EV_KEY, BTN_TR2))
     {
         result |= Go2InputFeatureFlags_Triggers;
+    }
+
+    if (libevdev_has_event_code(input->dev, EV_ABS, ABS_RX) &&
+        libevdev_has_event_code(input->dev, EV_ABS, ABS_RY))
+    {
+        result |= Go2InputFeatureFlags_RightAnalog;
     }
 
     return result;

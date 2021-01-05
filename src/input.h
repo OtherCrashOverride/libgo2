@@ -94,12 +94,14 @@ typedef struct
 typedef enum
 {
     Go2InputFeatureFlags_None = (1 << 0),
-    Go2InputFeatureFlags_Triggers = (1 << 1)
+    Go2InputFeatureFlags_Triggers = (1 << 1),
+    Go2InputFeatureFlags_RightAnalog = (1 << 2),
 } go2_input_feature_flags_t;
 
 typedef enum
 {
-    Go2InputThumbstick_Left = 0
+    Go2InputThumbstick_Left = 0,
+    Go2InputThumbstick_Right
 } go2_input_thumbstick_t;
 
 typedef enum
